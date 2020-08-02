@@ -1,0 +1,891 @@
+type: edu
+custom_name: stage5
+files:
+- name: src/tictactoe/Main.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class Main {
+        public static void main(String[] args) {
+            // write your code here
+        }
+    }
+  learner_created: false
+- name: test/TicTacToeTest.java
+  visible: false
+  text: |
+    import org.hyperskill.hstest.exception.outcomes.WrongAnswer;
+    import org.hyperskill.hstest.stage.StageTest;
+    import org.hyperskill.hstest.testcase.CheckResult;
+    import org.hyperskill.hstest.testcase.TestCase;
+    import tictactoe.Main;
+
+    import java.util.ArrayList;
+    import java.util.List;
+    import java.util.Random;
+    import java.util.stream.Collectors;
+
+    enum FieldState {
+        X, O, FREE;
+
+        static FieldState get(char symbol) {
+            switch (symbol) {
+                case 'X': return X;
+                case 'O': return O;
+                case ' ':
+                case '_':
+                    return FREE;
+                default: return null;
+            }
+        }
+    }
+
+    class TicTacToeField {
+
+        final FieldState[][] field;
+
+        TicTacToeField(FieldState[][] field) {
+            this.field = new FieldState[3][3];
+            for (int row = 0; row < 3; row++) {
+                for (int col = 0; col < 3; col++) {
+                    this.field[row][col] = field[row][col];
+                }
+            }
+        }
+
+        TicTacToeField(String str) {
+            field = new FieldState[3][3];
+            for (int row = 0; row < 3; row++) {
+                for (int col = 0; col < 3; col++) {
+                    field[row][col] =
+                        FieldState.get(str.charAt(((2 - row) * 3 + col)));
+                }
+            }
+        }
+
+        FieldState get(int x, int y) {
+            return field[y - 1][x - 1];
+        }
+
+        boolean equalTo(TicTacToeField other) {
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    if (field[i][j] != other.field[i][j]) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        boolean hasNextAs(TicTacToeField other) {
+            boolean improved = false;
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    if (field[i][j] != other.field[i][j]) {
+                        if (field[i][j] == FieldState.FREE && !improved) {
+                            improved = true;
+                        }
+                        else {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return improved;
+        }
+
+        boolean isCloseTo(TicTacToeField other) {
+            return equalTo(other)
+                || hasNextAs(other)
+                || other.hasNextAs(this);
+        }
+
+        boolean isWinning(FieldState side) {
+            if (side == FieldState.FREE) {
+                return false;
+            }
+
+            if (get(1, 1) == side &&
+                get(1, 2) == side &&
+                get(1, 3) == side) {
+                return true;
+            }
+
+            if (get(2, 1) == side &&
+                get(2, 2) == side &&
+                get(2, 3) == side) {
+                return true;
+            }
+
+            if (get(3, 1) == side &&
+                get(3, 2) == side &&
+                get(3, 3) == side) {
+                return true;
+            }
+
+            if (get(1, 1) == side &&
+                get(2, 1) == side &&
+                get(3, 1) == side) {
+                return true;
+            }
+
+            if (get(1, 2) == side &&
+                get(2, 2) == side &&
+                get(3, 2) == side) {
+                return true;
+            }
+
+            if (get(1, 3) == side &&
+                get(2, 3) == side &&
+                get(3, 3) == side) {
+                return true;
+            }
+
+            if (get(1, 1) == side &&
+                get(2, 2) == side &&
+                get(3, 3) == side) {
+                return true;
+            }
+
+            if (get(1, 3) == side &&
+                get(2, 2) == side &&
+                get(3, 1) == side) {
+                return true;
+            }
+
+            return false;
+        }
+
+        boolean isDraw() {
+            if (isWinning(FieldState.X) || isWinning(FieldState.O)) {
+                return false;
+            }
+            for (int x = 1; x <= 3; x++) {
+                for (int y = 1; y <= 3; y++) {
+                    if (get(x, y) == FieldState.FREE) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        static TicTacToeField parse(String fieldStr) {
+
+            try {
+                List<String> lines = fieldStr
+                    .lines()
+                    .map(String::strip)
+                    .filter(e ->
+                        e.startsWith("|")
+                            && e.endsWith("|"))
+                    .collect(Collectors.toList());
+
+                for (String line : lines) {
+                    if (line.length() != 9) {
+                        throw new WrongAnswer("Line of Tic-Tac-Toe " +
+                            "field should be 9 characters long\n" +
+                            "found " + line.length() + " characters in \"" + line + "\"");
+                    }
+                    for (char c : line.toCharArray()) {
+                        if (c != 'X'
+                            && c != 'O'
+                            && c != '|'
+                            && c != ' '
+                            && c != '_') {
+                            return null;
+                        }
+                    }
+                }
+
+                FieldState[][] field = new FieldState[3][3];
+
+                int y = 2;
+                for (String line : lines) {
+                    char[] cols = new char[] {
+                        line.charAt(2),
+                        line.charAt(4),
+                        line.charAt(6)
+                    };
+
+                    int x = 0;
+                    for (char c : cols) {
+                        FieldState state = FieldState.get(c);
+                        if (state == null) {
+                            return null;
+                        }
+                        field[y][x] = state;
+                        x++;
+                    }
+                    y--;
+                }
+
+                return new TicTacToeField(field);
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+
+
+        static List<TicTacToeField> parseAll(String output) {
+            List<TicTacToeField> fields = new ArrayList<>();
+
+            List<String> lines = output
+                .lines()
+                .map(String::strip)
+                .filter(e -> e.length() > 0)
+                .collect(Collectors.toList());
+
+            String candidateField = "";
+            boolean insideField = false;
+            for (String line : lines) {
+                if (line.contains("----") && !insideField) {
+                    insideField = true;
+                    candidateField = "";
+                } else if (line.contains("----") && insideField) {
+                    TicTacToeField field = TicTacToeField.parse(candidateField);
+                    if (field != null) {
+                        fields.add(field);
+                    }
+                    insideField = false;
+                }
+
+                if (insideField && line.startsWith("|")) {
+                    candidateField += line + "\n";
+                }
+            }
+
+            return fields;
+        }
+
+    }
+
+
+    class Clue {
+        int x, y;
+        Clue(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    public class TicTacToeTest extends StageTest<Clue> {
+        public TicTacToeTest() throws Exception {
+            super(Main.class);
+        }
+
+        static String[] inputs = new String[] {
+            "1 1", "1 2", "1 3",
+            "2 1", "2 2", "2 3",
+            "3 1", "3 2", "3 3"
+        };
+
+        String iterateCells(String initial) {
+            int index = -1;
+            for (int i = 0; i < inputs.length; i++) {
+                if (initial.equals(inputs[i])) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index == -1) {
+                return "";
+            }
+            String fullInput = "";
+            for (int i = index; i < index + 9; i++) {
+                fullInput += inputs[i % inputs.length] + "\n";
+            }
+            return fullInput;
+        }
+
+        @Override
+        public List<TestCase<Clue>> generate() {
+
+            List<TestCase<Clue>> tests = new ArrayList<>();
+
+            int i = 0;
+            for (String input : inputs) {
+
+                Random random = new Random();
+                String randomInput = "";
+                for (int j = 0; j < 10; j++) {
+                    int randX = random.nextInt(4) + 1;
+                    int randY = random.nextInt(4) + 1;
+                    randomInput += randX + " " + randY + "\n";
+                }
+
+                String fullMoveInput = randomInput
+                    + iterateCells(input) + iterateCells(input);
+
+                String[] strNums = input.split(" ");
+                int x = Integer.parseInt(strNums[0]);
+                int y = Integer.parseInt(strNums[1]);
+
+                if (i % 2 == 1) {
+                    // mix with incorrect data
+                    fullMoveInput = "4 " + i + "\n" + fullMoveInput;
+                }
+
+                String fullGameInput = "";
+                for (int j = 0; j < 9; j++) {
+                    fullGameInput += fullMoveInput;
+                }
+
+                tests.add(new TestCase<Clue>()
+                    .setInput(fullGameInput)
+                    .setAttach(new Clue(x, y)));
+
+                i++;
+            }
+
+            return tests;
+        }
+
+        @Override
+        public CheckResult check(String reply, Clue clue) {
+
+            List<TicTacToeField> fields = TicTacToeField.parseAll(reply);
+
+            if (fields.size() == 0) {
+                return new CheckResult(false, "No fields found");
+            }
+
+            for (int i = 1; i < fields.size(); i++) {
+                TicTacToeField curr = fields.get(i - 1);
+                TicTacToeField next = fields.get(i);
+
+                if (!(curr.equalTo(next) || curr.hasNextAs(next))) {
+                    return new CheckResult(false,
+                        "For two fields following each " +
+                            "other one is not a continuation " +
+                            "of the other (they differ more than in two places).");
+                }
+            }
+
+            List<String> lines = reply
+                .strip()
+                .lines()
+                .map(String::strip)
+                .filter(e -> e.length() > 0)
+                .collect(Collectors.toList());
+
+            String lastLine = lines.get(lines.size() - 1);
+
+            if (! (lastLine.contains("X wins")
+                || lastLine.contains("O wins")
+                || lastLine.contains("Draw")
+            )) {
+                return new CheckResult(false,
+                    "Can't parse final result, " +
+                        "should contain \"Draw\", \"X wins\" or \"O wins\".\n" +
+                        "Your last line: \"" + lastLine + "\"");
+            }
+
+            if (lastLine.contains("X wins") && lastLine.contains("O wins")) {
+                return new CheckResult(false,
+                    "Your final result contains \"X wins\" and \"O wins\" " +
+                        "at the same time. This is impossible.\n" +
+                        "Your last line: \"" + lastLine + "\"");
+            }
+
+            if (lastLine.contains("X wins") && lastLine.contains("Draw")) {
+                return new CheckResult(false,
+                    "Your final result contains \"X wins\" and \"Draw\" " +
+                        "at the same time. This is impossible.\n" +
+                        "Your last line: \"" + lastLine + "\"");
+            }
+
+            if (lastLine.contains("O wins") && lastLine.contains("Draw")) {
+                return new CheckResult(false,
+                    "Your final result contains \"O wins\" and \"Draw\" " +
+                        "at the same time. This is impossible.\n" +
+                        "Your last line: \"" + lastLine + "\"");
+            }
+
+            TicTacToeField lastField = fields.get(fields.size() - 1);
+
+            if (lastField.isWinning(FieldState.X) && !lastLine.contains("X wins")) {
+                return new CheckResult(false,
+                    "Your last field shows that X wins, " +
+                        "and your last line should contain \"X wins\".\n" +
+                        "Your last line: \"" + lastLine + "\"");
+            }
+
+            if (lastField.isWinning(FieldState.O) && !lastLine.contains("O wins")) {
+                return new CheckResult(false,
+                    "Your last field shows that O wins, " +
+                        "and your last line should contain \"O wins\".\n" +
+                        "Your last line: \"" + lastLine + "\"");
+            }
+
+            if (lastField.isDraw() && !lastLine.contains("Draw")) {
+                return new CheckResult(false,
+                    "Your last field shows that there is a draw, " +
+                        "and your last line should contain \"Draw\".\n" +
+                        "Your last line: \"" + lastLine + "\"");
+            }
+
+            if (lastField.isWinning(FieldState.X) ||
+                lastField.isWinning(FieldState.O) ||
+                lastField.isDraw()) {
+                return CheckResult.correct();
+            }
+
+            return CheckResult.wrong(
+                "Your last field contains unfinished game, the game should be finished!"
+            );
+        }
+    }
+  learner_created: false
+- name: src/tictactoe/exceptions/UserException.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    abstract class UserException extends Exception {
+        public UserException(Throwable cause) {
+            super(cause);
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/exceptions/NotANumbersException.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class NotANumbersException extends UserException {
+        public NotANumbersException(Throwable e) {
+            super(e);
+        }
+
+        @Override
+        public String toString() {
+            return "You should enter numbers!";
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/exceptions/CoordinatesNotInRange.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class CoordinatesNotInRange extends UserException {
+        public CoordinatesNotInRange(Throwable cause) {
+            super(cause);
+        }
+
+        @Override
+        public String toString() {
+            return "Coordinates should be from 1 to " + Field.SIZE;
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/exceptions/CellOccupiedException.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class CellOccupiedException extends UserException {
+        public CellOccupiedException(Throwable cause) {
+            super(cause);
+        }
+
+        @Override
+        public String toString() {
+            return "This cell is occupied! Choose another one!";
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/game/Field.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class Field {
+        public static final int SIZE = 3;
+        public static final int CELLS_NUMBER = SIZE * SIZE;
+        public static final char X = 'X';
+        public static final char O = 'O';
+        public static final char EMPTY = '_';
+
+        private char[][] field;
+
+        private Stats xStats;
+        private Stats oStats;
+
+        private State state;
+
+        public Field(String string) {
+            this(fieldToState(string));
+        }
+
+        public Field(char[][] field) {
+            this.field = field;
+            xStats = new Stats(0, false);
+            oStats = new Stats(0, false);
+            calcStats();
+        }
+
+        public void applyMove(Move move) throws UserException {
+            if (field[move.getI()][move.getJ()] != EMPTY) {
+                throw new CellOccupiedException(new Throwable());
+            }
+            field[move.getI()][move.getJ()] = move.getPlayer();
+            calcStats();
+        }
+
+        public void calcStats() {
+            calcCounters();
+            xStats.checkCounters();
+            oStats.checkCounters();
+            state = calcState();
+        }
+
+        private void calcCounters() {
+            for (int i = 0; i < SIZE; i++) {
+                for (int j = 0; j < SIZE; j++) {
+                    int isX = field[i][j] == X ? 1 : 0;
+                    int isO = field[i][j] == O ? 1 : 0;
+
+                    // Occurrences
+                    xStats.addOccurrences(isX);
+                    oStats.addOccurrences(isO);
+
+                    // Primary diagonal
+                    if (i == j) {
+                        xStats.getCounters().addToDiaPrimary(isX);
+                        oStats.getCounters().addToDiaPrimary(isO);
+                    }
+
+                    // Secondary diagonal
+                    if (field.length - i - 1 == j) {
+                        xStats.getCounters().addToDiaSecondary(isX);
+                        oStats.getCounters().addToDiaSecondary(isO);
+                    }
+
+                    // Rows
+                    xStats.getCounters().addToRow(i, isX);
+                    oStats.getCounters().addToRow(i, isO);
+
+                    // Columns
+                    xStats.getCounters().addToColumn(j, isX);
+                    oStats.getCounters().addToColumn(j, isO);
+                }
+            }
+        }
+
+        private State calcState() {
+            if (Math.abs(xStats.getOccurrences() - oStats.getOccurrences()) >= 2) {
+                return State.IMPOSSIBLE;
+            }
+            if (xStats.hasRow() && oStats.hasRow()) {
+                return State.IMPOSSIBLE;
+            }
+            if (xStats.hasRow() || oStats.hasRow()) {
+                return xStats.hasRow() ? State.X_WINS : State.O_WINS;
+            }
+            if (xStats.getOccurrences() + oStats.getOccurrences() == CELLS_NUMBER) {
+                return State.DRAW;
+            }
+            return State.GAME_NOT_FINISHED;
+        }
+
+        public State getState() {
+            return state;
+        }
+
+        public void setState(State state) {
+            this.state = state;
+        }
+
+        public char[][] getField() {
+            return field;
+        }
+
+        public void setField(char[][] field) {
+            this.field = field;
+        }
+
+        public static char[][] fieldToState(String fieldStr) {
+            char[] runes = fieldStr.toCharArray();
+            int i = 0, j = 0;
+            char[][] field = new char[3][3];
+            for (char rune :
+                    runes) {
+                field[i][j++] = rune;
+                if (j == 3) {
+                    j = 0;
+                    i++;
+                }
+            }
+            return field;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append(BasicTheme.LINE);
+
+            for (char[] row : field) {
+                stringBuilder.append(BasicTheme.DELIMITER).append(" ");
+                for (char c : row) {
+                    stringBuilder.append(c).append(" ");
+                }
+                stringBuilder.append(BasicTheme.DELIMITER).append("\n");
+            }
+            stringBuilder.append(BasicTheme.LINE);
+    //        stringBuilder.append(State.STRINGS.get(getState()));
+            return stringBuilder.toString();
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/game/Move.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class Move {
+        private int x;
+        private int y;
+        private int i;
+        private int j;
+        private char player;
+
+        public Move(int x, int y, char player) throws UserException {
+            if (x > Field.SIZE || y > Field.SIZE) {
+                throw new CoordinatesNotInRange(new Throwable());
+            }
+            this.x = x;
+            this.y = y;
+            i = Field.SIZE - y;
+            j = x - 1;
+            this.player = player;
+        }
+
+        public int getI() {
+            return i;
+        }
+
+        public int getJ() {
+            return j;
+        }
+
+        public int getX() {
+            return x;
+        }
+
+        public void setX(int x) {
+            this.x = x;
+        }
+
+        public int getY() {
+            return y;
+        }
+
+        public void setY(int y) {
+            this.y = y;
+        }
+
+        public char getPlayer() {
+            return player;
+        }
+
+        public void setPlayer(char player) {
+            this.player = player;
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/game/State.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    import java.util.HashMap;
+    import java.util.Map;
+
+    public enum State {
+        GAME_NOT_FINISHED,
+        DRAW,
+        X_WINS,
+        O_WINS,
+        IMPOSSIBLE;
+
+        static final Map<State, String> STRINGS = new HashMap<>() {{
+            put(GAME_NOT_FINISHED, "Game not finished");
+            put(DRAW, "Draw");
+            put(X_WINS, "X wins");
+            put(O_WINS, "O wins");
+            put(IMPOSSIBLE, "Impossible");
+        }};
+    }
+  learner_created: true
+- name: src/tictactoe/game/Stats.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    import static tictactoe.Field.SIZE;
+
+    public class Stats {
+        private int occurrences;
+        private boolean hasRow;
+        private Counters counters;
+
+        public Stats(int occurrences, boolean hasRow) {
+            this.occurrences = occurrences;
+            this.hasRow = hasRow;
+            this.counters = new Counters(SIZE);
+        }
+
+        public void checkCounters() {
+            if (counters.getDiaPrimary() == SIZE) {
+                hasRow = true;
+                return;
+            }
+            if (counters.getDiaSecondary() == SIZE) {
+                hasRow = true;
+                return;
+            }
+            for (int i = 0; i < SIZE; i++) {
+                if (counters.getColumns()[i] == SIZE) {
+                    hasRow = true;
+                    return;
+                }
+                if (counters.getRows()[i] == SIZE) {
+                    hasRow = true;
+                    return;
+                }
+            }
+        }
+
+        public int getOccurrences() {
+            return occurrences;
+        }
+
+        public void addOccurrences(int count) {
+            occurrences += count;
+        }
+
+        public boolean hasRow() {
+            return hasRow;
+        }
+
+        public void setHasRow(boolean hasRow) {
+            this.hasRow = hasRow;
+        }
+
+        public Counters getCounters() {
+            return counters;
+        }
+
+        public void setCounters(Counters counters) {
+            this.counters = counters;
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/game/Counters.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class Counters {
+        private int diaPrimary;
+        private int diaSecondary;
+        private int[] rows;
+        private int[] columns;
+
+        public Counters(int j) {
+            rows = new int[j];
+            columns = new int[j];
+        }
+
+        public void addToDiaPrimary(int count) {
+            diaPrimary += count;
+        }
+
+        public int getDiaPrimary() {
+            return diaPrimary;
+        }
+
+        public void addToDiaSecondary(int count) {
+            diaSecondary += count;
+        }
+
+        public int getDiaSecondary() {
+            return diaSecondary;
+        }
+
+        public void addToRow(int i, int count) {
+            rows[i] += count;
+        }
+
+        public int[] getRows() {
+            return rows;
+        }
+
+        public void addToColumn(int i, int count) {
+            columns[i] += count;
+        }
+
+        public int[] getColumns() {
+            return columns;
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/game/Controller.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    import java.io.InputStream;
+    import java.io.PrintStream;
+    import java.util.Scanner;
+
+    public class ControlPanel {
+        private final Scanner scanner;
+        private final PrintStream printer;
+
+        public ControlPanel(InputStream inputStream, PrintStream printer) {
+            this.scanner = new Scanner(inputStream);
+            this.printer = printer;
+        }
+
+        public Field readField() {
+            printer.print("Enter cells: ");
+            return new Field(scanner.nextLine());
+        }
+
+        public Move readMove() throws UserException {
+            printer.print("Enter the coordinates: ");
+            try {
+                var xy = scanner.nextLine().split(" ");
+                return new Move(
+                        Integer.parseInt(xy[0]),
+                        Integer.parseInt(xy[1]),
+                        Field.X
+                );
+            } catch (NumberFormatException e) {
+                throw new NotANumbersException(e);
+            }
+        }
+    }
+  learner_created: true
+- name: src/tictactoe/ui/Theme.java
+  visible: true
+  text: |
+    package tictactoe;
+
+    public class BasicTheme {
+        public static final String LINE = "---------\n";
+        public static final String DELIMITER = "|";
+    }
+  learner_created: true
+feedback_link: https://hyperskill.org/projects/48/stages/259/implement
+status: Solved
+feedback:
+  message: Congratulations! Continue on <a href="https://hyperskill.org/projects/48/stages/259/implement">JetBrains
+    Academy</a>
+  time: Sun, 02 Aug 2020 17:09:26 UTC
+record: -1
